@@ -46,6 +46,296 @@ function creerGraphiques() {
                         backgroundColor: 'rgba(102, 126, 234, 0.1)',
                         tension: 0.4,
                         fill: true,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('fr-FR') + ' €';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function creerGraphiqueFamilles(donnees) {
+            const ctx = document.getElementById('chartFamilles').getContext('2d');
+            
+            if (charts.familles) {
+                charts.familles.destroy();
+            }
+            
+            // Grouper par famille
+            const parFamille = {};
+            donnees.forEach(d => {
+                parFamille[d.Famille] = (parFamille[d.Famille] || 0) + parseFloat(d['CA HT Mensuel']);
+            });
+            
+            const labels = Object.keys(parFamille);
+            const values = labels.map(label => parFamille[label]);
+            
+            // Couleurs dynamiques
+            const colors = labels.map((_, i) => `hsl(${(i * 360) / labels.length}, 70%, 60%)`);
+            
+            charts.familles = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderWidth: 3,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 15,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value.toLocaleString('fr-FR')} € (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function creerGraphiqueAnnees(donnees) {
+            const ctx = document.getElementById('chartAnnees').getContext('2d');
+            
+            if (charts.annees) {
+                charts.annees.destroy();
+            }
+            
+            // Grouper par année
+            const parAnnee = {};
+            donnees.forEach(d => {
+                const annee = d['Année CA'];
+                parAnnee[annee] = (parAnnee[annee] || 0) + parseFloat(d['CA HT Mensuel']);
+            });
+            
+            const labels = Object.keys(parAnnee).sort();
+            const values = labels.map(label => parAnnee[label]);
+            
+            charts.annees = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'CA Annuel (€)',
+                        data: values,
+                        backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                        borderColor: '#667eea',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('fr-FR') + ' €';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function creerGraphiqueTop5(donnees) {
+            const ctx = document.getElementById('chartTop5').getContext('2d');
+            
+            if (charts.top5) {
+                charts.top5.destroy();
+            }
+            
+            // Grouper par famille et prendre le top 5
+            const parFamille = {};
+            donnees.forEach(d => {
+                parFamille[d.Famille] = (parFamille[d.Famille] || 0) + parseFloat(d['CA HT Mensuel']);
+            });
+            
+            const sorted = Object.entries(parFamille)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 5);
+            
+            const labels = sorted.map(([famille]) => famille);
+            const values = sorted.map(([, ca]) => ca);
+            
+            charts.top5 = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'CA (€)',
+                        data: values,
+                        backgroundColor: [
+                            '#667eea',
+                            '#764ba2',
+                            '#f093fb',
+                            '#f5576c',
+                            '#4facfe'
+                        ],
+                        borderWidth: 0,
+                        borderRadius: 8,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('fr-FR') + ' €';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function afficherTableau(donnees) {
+            const container = document.getElementById('tableData');
+            
+            if (donnees.length === 0) {
+                container.innerHTML = '<div class="no-data">Aucune donnée à afficher avec les filtres sélectionnés</div>';
+                return;
+            }
+            
+            // Trier par année et mois décroissants
+            donnees.sort((a, b) => {
+                if (a['Année CA'] !== b['Année CA']) {
+                    return b['Année CA'] - a['Année CA'];
+                }
+                return b['Mois CA'] - a['Mois CA'];
+            });
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Famille</th>
+                            <th>CA HT (€)</th>
+                            <th>Mois</th>
+                            <th>Année</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            donnees.forEach(d => {
+                const nomsMois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+                html += `
+                    <tr>
+                        <td><strong>${d.Famille}</strong></td>
+                        <td>${parseFloat(d['CA HT Mensuel']).toLocaleString('fr-FR', {style: 'currency', currency: 'EUR'})}</td>
+                        <td>${nomsMois[d['Mois CA'] - 1]} (${d['Mois CA']})</td>
+                        <td>${d['Année CA']}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>        function creerGraphiques() {
+            const donneesFiltrees = obtenirDonneesFiltrees();
+            
+            // Graphique d'évolution mensuelle
+            creerGraphiqueEvolution(donneesFiltrees);
+            
+            // Graphique par famille
+            creerGraphiqueFamilles(donneesFiltrees);
+            
+            // Graphique par année
+            creerGraphiqueAnnees(donneesFiltrees);
+            
+            // Top 5 familles
+            creerGraphiqueTop5(donneesFiltrees);
+        }
+
+        function creerGraphiqueEvolution(donnees) {
+            const ctx = document.getElementById('chartEvolution').getContext('2d');
+            
+            if (charts.evolution) {
+                charts.evolution.destroy();
+            }
+            
+            // Grouper par mois/année
+            const parMois = {};
+            donnees.forEach(d => {
+                const cle = `${d['Mois CA']}/${d['Année CA']}`;
+                parMois[cle] = (parMois[cle] || 0) + parseFloat(d['CA HT Mensuel']);
+            });
+            
+            const labels = Object.keys(parMois).sort((a, b) => {
+                const [moisA, anneeA] = a.split('/').map(Number);
+                const [moisB, anneeB] = b.split('/').map(Number);
+                return (anneeA * 12 + moisA) - (anneeB * 12 + moisB);
+            });
+            const values = labels.map(label => parMois[label]);
+            
+            charts.evolution = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'CA Mensuel (€)',
+                        data: values,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true,
                         pointBackgroundColor: '#667eea',<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -138,7 +428,7 @@ function creerGraphiques() {
             font-size: 1rem;
             transition: all 0.3s ease;
             background: white;
-            min-height: 120px;
+            min-height: 50px;
         }
 
         select:focus {
@@ -147,22 +437,77 @@ function creerGraphiques() {
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        select[multiple] {
-            min-height: 120px;
+        .checkbox-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 120px;
+            overflow-y: auto;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
         }
 
-        select[multiple] option {
-            padding: 8px;
-            margin: 2px 0;
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+            min-width: 80px;
         }
 
-        select[multiple] option:checked {
+        .checkbox-item:hover {
+            background: #e2e8f0;
+            border-color: #667eea;
+        }
+
+        .checkbox-item.checked {
             background: #667eea;
             color: white;
+            border-color: #5a67d8;
         }
 
-        .single-select {
-            min-height: 50px;
+        .checkbox-item input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: inherit;
+        }
+
+        .select-all-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .select-all-btn {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            border: 1px solid #ddd;
+            background: #f8f9fa;
+            color: #666;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .select-all-btn:hover {
+            background: #e2e8f0;
+            border-color: #667eea;
+            color: #2c3e50;
         }
 
         .reset-filters {
@@ -411,30 +756,36 @@ function creerGraphiques() {
             <div class="controls-row">
                 <div class="filter-group">
                     <label for="familleFilter">Famille de produits :</label>
-                    <select id="familleFilter" class="single-select">
+                    <select id="familleFilter">
                         <option value="">Toutes les familles</option>
                     </select>
                 </div>
                 
                 <div class="filter-group">
-                    <label for="anneeFilter">Années :</label>
-                    <div class="filter-help">Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs années</div>
-                    <select id="anneeFilter" multiple>
-                    </select>
+                    <label>Années :</label>
+                    <div class="select-all-container">
+                        <button class="select-all-btn" onclick="toggleToutesAnnees()">Tout sélectionner</button>
+                        <button class="select-all-btn" onclick="deselectionnerToutesAnnees()">Tout désélectionner</button>
+                    </div>
+                    <div id="anneesContainer" class="checkbox-container">
+                        <!-- Les années seront ajoutées dynamiquement -->
+                    </div>
                 </div>
                 
                 <div class="filter-group">
-                    <label for="moisFilter">Mois :</label>
-                    <div class="filter-help">Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs mois</div>
-                    <select id="moisFilter" multiple>
-                    </select>
+                    <label>Mois :</label>
+                    <div class="select-all-container">
+                        <button class="select-all-btn" onclick="toggleTousMois()">Tout sélectionner</button>
+                        <button class="select-all-btn" onclick="deselectionnerTousMois()">Tout désélectionner</button>
+                    </div>
+                    <div id="moisContainer" class="checkbox-container">
+                        <!-- Les mois seront ajoutés dynamiquement -->
+                    </div>
                 </div>
             </div>
 
             <div class="reset-filters">
-                <button class="btn btn-primary" onclick="resetFiltres()">🔄 Réinitialiser les filtres</button>
-                <button class="btn btn-secondary" onclick="selectionnerTout('annee')">📅 Toutes les années</button>
-                <button class="btn btn-secondary" onclick="selectionnerTout('mois')">📆 Tous les mois</button>
+                <button class="btn btn-primary" onclick="resetFiltres()">🔄 Réinitialiser tous les filtres</button>
             </div>
 
             <div class="filter-summary" id="filterSummary">
@@ -625,13 +976,9 @@ function creerGraphiques() {
             const mois = [...new Set(donneesCA.map(d => d['Mois CA']))].sort((a, b) => a - b);
             
             const familleSelect = document.getElementById('familleFilter');
-            const anneeSelect = document.getElementById('anneeFilter');
-            const moisSelect = document.getElementById('moisFilter');
             
-            // Sauvegarder les sélections actuelles
+            // Sauvegarder la sélection actuelle de famille
             const familleActuelle = familleSelect.value;
-            const anneesSelectionnees = Array.from(anneeSelect.selectedOptions).map(opt => opt.value);
-            const moisSelectionnes = Array.from(moisSelect.selectedOptions).map(opt => opt.value);
             
             // Famille (sélection simple)
             familleSelect.innerHTML = '<option value="">Toutes les familles</option>';
@@ -643,32 +990,82 @@ function creerGraphiques() {
                 familleSelect.appendChild(option);
             });
             
-            // Années (sélection multiple)
-            anneeSelect.innerHTML = '';
+            // Années (cases à cocher)
+            const anneesContainer = document.getElementById('anneesContainer');
+            const anneesSelectionnees = Array.from(anneesContainer.querySelectorAll('input:checked')).map(input => parseInt(input.value));
+            
+            anneesContainer.innerHTML = '';
             annees.forEach(annee => {
-                const option = document.createElement('option');
-                option.value = annee;
-                option.textContent = annee;
-                if (anneesSelectionnees.includes(annee.toString())) option.selected = true;
-                anneeSelect.appendChild(option);
+                const checkboxItem = document.createElement('div');
+                checkboxItem.className = 'checkbox-item';
+                if (anneesSelectionnees.includes(annee)) {
+                    checkboxItem.classList.add('checked');
+                }
+                
+                checkboxItem.innerHTML = `
+                    <input type="checkbox" id="annee-${annee}" value="${annee}" 
+                           ${anneesSelectionnees.includes(annee) ? 'checked' : ''} 
+                           onchange="toggleCheckboxItem(this)">
+                    <label for="annee-${annee}">${annee}</label>
+                `;
+                
+                checkboxItem.addEventListener('click', function(e) {
+                    if (e.target.type !== 'checkbox') {
+                        const checkbox = this.querySelector('input[type="checkbox"]');
+                        checkbox.checked = !checkbox.checked;
+                        toggleCheckboxItem(checkbox);
+                    }
+                });
+                
+                anneesContainer.appendChild(checkboxItem);
             });
             
-            // Mois (sélection multiple)
+            // Mois (cases à cocher)
+            const moisContainer = document.getElementById('moisContainer');
+            const moisSelectionnes = Array.from(moisContainer.querySelectorAll('input:checked')).map(input => parseInt(input.value));
             const nomsMois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-            moisSelect.innerHTML = '';
+            
+            moisContainer.innerHTML = '';
             mois.forEach(m => {
-                const option = document.createElement('option');
-                option.value = m;
-                option.textContent = `${nomsMois[m-1]} (${m})`;
-                if (moisSelectionnes.includes(m.toString())) option.selected = true;
-                moisSelect.appendChild(option);
+                const checkboxItem = document.createElement('div');
+                checkboxItem.className = 'checkbox-item';
+                if (moisSelectionnes.includes(m)) {
+                    checkboxItem.classList.add('checked');
+                }
+                
+                checkboxItem.innerHTML = `
+                    <input type="checkbox" id="mois-${m}" value="${m}" 
+                           ${moisSelectionnes.includes(m) ? 'checked' : ''} 
+                           onchange="toggleCheckboxItem(this)">
+                    <label for="mois-${m}">${nomsMois[m-1]}</label>
+                `;
+                
+                checkboxItem.addEventListener('click', function(e) {
+                    if (e.target.type !== 'checkbox') {
+                        const checkbox = this.querySelector('input[type="checkbox"]');
+                        checkbox.checked = !checkbox.checked;
+                        toggleCheckboxItem(checkbox);
+                    }
+                });
+                
+                moisContainer.appendChild(checkboxItem);
             });
+        }
+
+        function toggleCheckboxItem(checkbox) {
+            const item = checkbox.closest('.checkbox-item');
+            if (checkbox.checked) {
+                item.classList.add('checked');
+            } else {
+                item.classList.remove('checked');
+            }
+            filtrerDonnees();
         }
 
         function obtenirDonneesFiltrees() {
             const familleFilter = document.getElementById('familleFilter').value;
-            const anneesSelectionnees = Array.from(document.getElementById('anneeFilter').selectedOptions).map(opt => parseInt(opt.value));
-            const moisSelectionnes = Array.from(document.getElementById('moisFilter').selectedOptions).map(opt => parseInt(opt.value));
+            const anneesSelectionnees = Array.from(document.querySelectorAll('#anneesContainer input:checked')).map(input => parseInt(input.value));
+            const moisSelectionnes = Array.from(document.querySelectorAll('#moisContainer input:checked')).map(input => parseInt(input.value));
             
             return donneesCA.filter(d => {
                 const familleOK = !familleFilter || d.Famille === familleFilter;
@@ -681,8 +1078,8 @@ function creerGraphiques() {
 
         function mettreAJourResumeFiltres() {
             const familleFilter = document.getElementById('familleFilter').value;
-            const anneesSelectionnees = Array.from(document.getElementById('anneeFilter').selectedOptions).map(opt => opt.text);
-            const moisSelectionnes = Array.from(document.getElementById('moisFilter').selectedOptions).map(opt => opt.text);
+            const anneesSelectionnees = Array.from(document.querySelectorAll('#anneesContainer input:checked')).map(input => input.nextElementSibling.textContent);
+            const moisSelectionnes = Array.from(document.querySelectorAll('#moisContainer input:checked')).map(input => input.nextElementSibling.textContent);
             
             let resume = [];
             
@@ -708,17 +1105,63 @@ function creerGraphiques() {
 
         function resetFiltres() {
             document.getElementById('familleFilter').value = '';
-            document.getElementById('anneeFilter').selectedIndex = -1;
-            document.getElementById('moisFilter').selectedIndex = -1;
+            
+            // Décocher toutes les années
+            document.querySelectorAll('#anneesContainer input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+                checkbox.closest('.checkbox-item').classList.remove('checked');
+            });
+            
+            // Décocher tous les mois
+            document.querySelectorAll('#moisContainer input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+                checkbox.closest('.checkbox-item').classList.remove('checked');
+            });
+            
             filtrerDonnees();
         }
 
-        function selectionnerTout(type) {
-            const select = document.getElementById(type === 'annee' ? 'anneeFilter' : 'moisFilter');
-            for (let i = 0; i < select.options.length; i++) {
-                select.options[i].selected = true;
-            }
+        function toggleToutesAnnees() {
+            const checkboxes = document.querySelectorAll('#anneesContainer input[type="checkbox"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = !allChecked;
+                toggleCheckboxItem(checkbox);
+            });
+        }
+
+        function deselectionnerToutesAnnees() {
+            document.querySelectorAll('#anneesContainer input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+                checkbox.closest('.checkbox-item').classList.remove('checked');
+            });
             filtrerDonnees();
+        }
+
+        function toggleTousMois() {
+            const checkboxes = document.querySelectorAll('#moisContainer input[type="checkbox"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = !allChecked;
+                toggleCheckboxItem(checkbox);
+            });
+        }
+
+        function deselectionnerTousMois() {
+            document.querySelectorAll('#moisContainer input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+                checkbox.closest('.checkbox-item').classList.remove('checked');
+            });
+            filtrerDonnees();
+        }
+
+        function filtrerDonnees() {
+            calculerStatistiques();
+            creerGraphiques();
+            afficherTableau(obtenirDonneesFiltrees());
+            mettreAJourResumeFiltres();
         }
 
         function calculerStatistiques() {
