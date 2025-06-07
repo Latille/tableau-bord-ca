@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tableau de Bord Commercial - Évolutif</title>
+    <title>Tableau de Bord Commercial - Google Sheets</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -42,6 +42,28 @@
             font-size: 1.1rem;
         }
 
+        .sync-status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .sync-status.connected {
+            background: rgba(72, 187, 120, 0.2);
+            color: #2f855a;
+        }
+
+        .sync-status.error {
+            background: rgba(245, 101, 101, 0.2);
+            color: #c53030;
+        }
+
+        .sync-status.loading {
+            background: rgba(66, 153, 225, 0.2);
+            color: #2b6cb0;
+        }
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
@@ -55,6 +77,52 @@
             border-radius: 15px;
             margin-bottom: 30px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .config-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px dashed rgba(102, 126, 234, 0.3);
+        }
+
+        .config-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            color: #2c3e50;
+            min-width: 120px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            min-width: 300px;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
         .controls-row {
@@ -79,7 +147,7 @@
             font-size: 0.9rem;
         }
 
-        select, input {
+        select {
             padding: 12px;
             border: 2px solid #ddd;
             border-radius: 8px;
@@ -88,7 +156,7 @@
             background: white;
         }
 
-        select:focus, input:focus {
+        select:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
@@ -138,28 +206,14 @@
             transform: translateY(-2px);
         }
 
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-        }
-
-        .file-input-wrapper input[type=file] {
-            position: absolute;
-            left: -9999px;
-        }
-
-        .data-management {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 20px;
-            border: 2px dashed rgba(255, 255, 255, 0.3);
-        }
-
-        .data-management h3 {
+        .btn-secondary {
+            background: #718096;
             color: white;
-            margin-bottom: 15px;
-            text-align: center;
+        }
+
+        .btn-secondary:hover {
+            background: #4a5568;
+            transform: translateY(-2px);
         }
 
         .management-buttons {
@@ -167,6 +221,7 @@
             gap: 15px;
             flex-wrap: wrap;
             justify-content: center;
+            margin-top: 15px;
         }
 
         .stats-grid {
@@ -271,7 +326,7 @@
         .loading {
             text-align: center;
             padding: 40px;
-            color: white;
+            color: #7f8c8d;
             font-size: 1.2rem;
         }
 
@@ -293,6 +348,7 @@
             z-index: 1000;
             transform: translateX(100%);
             transition: transform 0.3s ease;
+            max-width: 400px;
         }
 
         .notification.show {
@@ -311,26 +367,11 @@
             background: #4299e1;
         }
 
-        .import-zone {
-            border: 2px dashed #667eea;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            margin: 15px 0;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .import-zone:hover {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: #5a67d8;
-        }
-
-        .import-zone.dragover {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: #48bb78;
+        .help-text {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
         }
 
         @media (max-width: 768px) {
@@ -354,6 +395,15 @@
             .stats-grid {
                 grid-template-columns: 1fr;
             }
+
+            .input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .input-group input {
+                min-width: auto;
+            }
         }
     </style>
 </head>
@@ -361,10 +411,30 @@
     <div class="header">
         <h1>📊 Tableau de Bord Commercial</h1>
         <div class="date-info">Dernière mise à jour : <span id="lastUpdate"></span></div>
+        <div id="syncStatus" class="sync-status loading">
+            🔄 Configuration en cours...
+        </div>
     </div>
 
     <div class="container">
         <div class="controls">
+            <div class="config-section">
+                <h3>⚙️ Configuration Google Sheets</h3>
+                <div class="input-group">
+                    <label for="sheetsId">ID Google Sheets :</label>
+                    <input type="text" id="sheetsId" placeholder="Collez l'ID de votre Google Sheets ici">
+                </div>
+                <div class="help-text">
+                    L'ID se trouve dans l'URL de votre Google Sheets : 
+                    https://docs.google.com/spreadsheets/d/<strong>VOTRE_ID_ICI</strong>/edit
+                </div>
+                <div class="management-buttons">
+                    <button class="btn btn-primary" onclick="connecterGoogleSheets()">🔗 Connecter à Google Sheets</button>
+                    <button class="btn btn-secondary" onclick="synchroniserMaintenant()">🔄 Synchroniser maintenant</button>
+                    <button class="btn btn-warning" onclick="activerAutoSync()">⏰ Auto-sync (5 min)</button>
+                </div>
+            </div>
+
             <div class="controls-row">
                 <div class="filter-group">
                     <label>Famille de produits :</label>
@@ -383,23 +453,6 @@
                     <select id="moisFilter">
                         <option value="">Tous les mois</option>
                     </select>
-                </div>
-            </div>
-
-            <div class="data-management">
-                <h3>🗂️ Gestion des Données</h3>
-                <div class="management-buttons">
-                    <div class="file-input-wrapper">
-                        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple>
-                        <button class="btn btn-primary">📁 Importer nouvelles données</button>
-                    </div>
-                    <button class="btn btn-success" onclick="exporterDonnees()">💾 Exporter base complète</button>
-                    <button class="btn btn-warning" onclick="viderDonnees()">🗑️ Vider la base</button>
-                </div>
-                
-                <div class="import-zone" id="importZone">
-                    <p>📂 Glissez-déposez vos fichiers Excel ici</p>
-                    <small>ou cliquez sur "Importer nouvelles données"</small>
                 </div>
             </div>
         </div>
@@ -426,8 +479,8 @@
                 <div class="stat-label">Total d'enregistrements</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value" id="derniereMAJ">-</div>
-                <div class="stat-label">Dernière MAJ</div>
+                <div class="stat-value" id="derniereSync">-</div>
+                <div class="stat-label">Dernière Synchronisation</div>
             </div>
         </div>
 
@@ -453,7 +506,7 @@
         <div class="table-container">
             <h3 class="chart-title">Données Détaillées</h3>
             <div id="tableData">
-                <div class="loading">Chargement des données...</div>
+                <div class="loading">En attente de configuration Google Sheets...</div>
             </div>
         </div>
     </div>
@@ -462,181 +515,134 @@
         // Variables globales
         let donneesCA = [];
         let charts = {};
+        let autoSyncInterval = null;
+        let sheetsId = '';
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
-            // Charger les données depuis le localStorage
-            chargerDonneesLocales();
+            // Charger la configuration sauvegardée
+            const savedSheetsId = localStorage.getItem('sheetsId');
+            if (savedSheetsId) {
+                document.getElementById('sheetsId').value = savedSheetsId;
+                sheetsId = savedSheetsId;
+                connecterGoogleSheets();
+            }
             
             // Gestionnaires d'événements
             document.getElementById('familleFilter').addEventListener('change', filtrerDonnees);
             document.getElementById('anneeFilter').addEventListener('change', filtrerDonnees);
             document.getElementById('moisFilter').addEventListener('change', filtrerDonnees);
-            document.getElementById('fileInput').addEventListener('change', chargerFichiers);
-            
-            // Drag & Drop
-            const importZone = document.getElementById('importZone');
-            importZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                importZone.classList.add('dragover');
-            });
-            
-            importZone.addEventListener('dragleave', () => {
-                importZone.classList.remove('dragover');
-            });
-            
-            importZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                importZone.classList.remove('dragover');
-                traiterFichiers(e.dataTransfer.files);
-            });
-            
-            importZone.addEventListener('click', () => {
-                document.getElementById('fileInput').click();
-            });
             
             // Mise à jour de la date
             document.getElementById('lastUpdate').textContent = new Date().toLocaleString('fr-FR');
         });
 
-        function chargerDonneesLocales() {
-            const donneesStockees = localStorage.getItem('donneesCA');
-            if (donneesStockees) {
-                try {
-                    donneesCA = JSON.parse(donneesStockees);
-                    afficherNotification('Données chargées depuis la sauvegarde locale', 'info');
-                } catch (e) {
-                    console.error('Erreur lors du chargement des données:', e);
-                    donneesCA = [];
-                }
-            } else {
-                // Données d'exemple si aucune donnée n'est stockée
-                donneesCA = [
-                    {Famille: "BCT", "CA HT Mensuel": 515.62, "Mois CA": 10, "Année CA": 2024},
-                    {Famille: "BCT", "CA HT Mensuel": 483.53, "Mois CA": 9, "Année CA": 2024},
-                    {Famille: "Boulangerie", "CA HT Mensuel": 2850.75, "Mois CA": 10, "Année CA": 2024},
-                    {Famille: "Crèmerie", "CA HT Mensuel": 7200.30, "Mois CA": 10, "Année CA": 2024},
-                    {Famille: "Epicerie", "CA HT Mensuel": 8500.45, "Mois CA": 10, "Année CA": 2024}
-                ];
-                sauvegarderDonnees();
-            }
+        function connecterGoogleSheets() {
+            const inputSheetsId = document.getElementById('sheetsId').value.trim();
             
-            mettreAJourTableauBord();
-        }
-
-        function sauvegarderDonnees() {
-            try {
-                localStorage.setItem('donneesCA', JSON.stringify(donneesCA));
-                localStorage.setItem('derniereMAJ', new Date().toISOString());
-            } catch (e) {
-                console.error('Erreur lors de la sauvegarde:', e);
-                afficherNotification('Erreur lors de la sauvegarde des données', 'error');
-            }
-        }
-
-        function chargerFichiers(event) {
-            traiterFichiers(event.target.files);
-        }
-
-        async function traiterFichiers(files) {
-            for (let file of files) {
-                try {
-                    await traiterFichier(file);
-                } catch (error) {
-                    console.error('Erreur lors du traitement du fichier:', file.name, error);
-                    afficherNotification(`Erreur avec le fichier ${file.name}`, 'error');
-                }
-            }
-        }
-
-        function traiterFichier(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    try {
-                        let nouvellesdonnees = [];
-                        
-                        if (file.name.endsWith('.csv')) {
-                            // Traitement CSV
-                            const csv = e.target.result;
-                            const parsed = Papa.parse(csv, {
-                                header: true,
-                                dynamicTyping: true,
-                                skipEmptyLines: true
-                            });
-                            nouvellesdonnees = parsed.data;
-                        } else {
-                            // Traitement Excel
-                            const data = new Uint8Array(e.target.result);
-                            const workbook = XLSX.read(data, {type: 'array'});
-                            const sheetName = workbook.SheetNames[0];
-                            const worksheet = workbook.Sheets[sheetName];
-                            nouvellesdonnees = XLSX.utils.sheet_to_json(worksheet);
-                        }
-                        
-                        // Validation et nettoyage des données
-                        nouvellesdonnees = nouvellesdonnees.filter(row => 
-                            row.Famille && 
-                            row['CA HT Mensuel'] && 
-                            row['Mois CA'] && 
-                            row['Année CA']
-                        );
-                        
-                        if (nouvellesdonnees.length > 0) {
-                            // Fusionner avec les données existantes
-                            donneesCA = [...donneesCA, ...nouvellesdonnees];
-                            sauvegarderDonnees();
-                            mettreAJourTableauBord();
-                            
-                            afficherNotification(
-                                `✅ ${nouvellesdonnees.length} nouveaux enregistrements ajoutés depuis ${file.name}`, 
-                                'success'
-                            );
-                        } else {
-                            afficherNotification(`Aucune donnée valide trouvée dans ${file.name}`, 'error');
-                        }
-                        
-                        resolve();
-                    } catch (error) {
-                        reject(error);
-                    }
-                };
-                
-                reader.onerror = () => reject(reader.error);
-                
-                if (file.name.endsWith('.csv')) {
-                    reader.readAsText(file);
-                } else {
-                    reader.readAsArrayBuffer(file);
-                }
-            });
-        }
-
-        function exporterDonnees() {
-            if (donneesCA.length === 0) {
-                afficherNotification('Aucune donnée à exporter', 'error');
+            if (!inputSheetsId) {
+                afficherNotification('❌ Veuillez saisir l\'ID de votre Google Sheets', 'error');
                 return;
             }
             
-            // Créer un nouveau workbook
-            const ws = XLSX.utils.json_to_sheet(donneesCA);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "BD");
+            // Extraire l'ID si on a collé une URL complète
+            let extractedId = inputSheetsId;
+            const urlMatch = inputSheetsId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            if (urlMatch) {
+                extractedId = urlMatch[1];
+                document.getElementById('sheetsId').value = extractedId;
+            }
             
-            // Télécharger le fichier
-            const date = new Date().toISOString().split('T')[0];
-            XLSX.writeFile(wb, `base_donnees_complete_${date}.xlsx`);
+            sheetsId = extractedId;
+            localStorage.setItem('sheetsId', sheetsId);
             
-            afficherNotification('📁 Base de données exportée avec succès', 'success');
+            synchroniserMaintenant();
         }
 
-        function viderDonnees() {
-            if (confirm('⚠️ Êtes-vous sûr de vouloir vider toute la base de données ? Cette action est irréversible.')) {
-                donneesCA = [];
-                sauvegarderDonnees();
+        async function synchroniserMaintenant() {
+            if (!sheetsId) {
+                afficherNotification('❌ Veuillez d\'abord configurer votre Google Sheets', 'error');
+                return;
+            }
+            
+            const syncStatus = document.getElementById('syncStatus');
+            syncStatus.className = 'sync-status loading';
+            syncStatus.textContent = '🔄 Synchronisation en cours...';
+            
+            try {
+                // URL pour récupérer le CSV depuis Google Sheets
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetsId}/export?format=csv&gid=0`;
+                
+                const response = await fetch(csvUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP: ${response.status}`);
+                }
+                
+                const csvData = await response.text();
+                
+                // Parser le CSV
+                const parsed = Papa.parse(csvData, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    transformHeader: (header) => header.trim()
+                });
+                
+                if (parsed.errors.length > 0) {
+                    console.warn('Erreurs de parsing CSV:', parsed.errors);
+                }
+                
+                // Validation et nettoyage des données
+                donneesCA = parsed.data.filter(row => 
+                    row.Famille && 
+                    row['CA HT Mensuel'] && 
+                    row['Mois CA'] && 
+                    row['Année CA'] &&
+                    !isNaN(parseFloat(row['CA HT Mensuel'])) &&
+                    !isNaN(parseInt(row['Mois CA'])) &&
+                    !isNaN(parseInt(row['Année CA']))
+                );
+                
+                if (donneesCA.length === 0) {
+                    throw new Error('Aucune donnée valide trouvée dans Google Sheets');
+                }
+                
+                // Mettre à jour l'interface
                 mettreAJourTableauBord();
-                afficherNotification('🗑️ Base de données vidée', 'info');
+                
+                // Mettre à jour le statut
+                syncStatus.className = 'sync-status connected';
+                syncStatus.innerHTML = `✅ Connecté - ${donneesCA.length} enregistrements synchronisés`;
+                
+                // Mettre à jour la date de synchronisation
+                document.getElementById('derniereSync').textContent = new Date().toLocaleTimeString('fr-FR');
+                
+                afficherNotification(`✅ Synchronisation réussie ! ${donneesCA.length} enregistrements chargés`, 'success');
+                
+            } catch (error) {
+                console.error('Erreur de synchronisation:', error);
+                
+                syncStatus.className = 'sync-status error';
+                syncStatus.textContent = '❌ Erreur de connexion - Vérifiez votre ID et les permissions';
+                
+                afficherNotification('❌ Erreur de synchronisation. Vérifiez que votre Google Sheets est public et que l\'ID est correct.', 'error');
+            }
+        }
+
+        function activerAutoSync() {
+            if (!sheetsId) {
+                afficherNotification('❌ Veuillez d\'abord configurer votre Google Sheets', 'error');
+                return;
+            }
+            
+            if (autoSyncInterval) {
+                clearInterval(autoSyncInterval);
+                autoSyncInterval = null;
+                afficherNotification('⏸️ Auto-synchronisation désactivée', 'info');
+            } else {
+                autoSyncInterval = setInterval(synchroniserMaintenant, 5 * 60 * 1000); // 5 minutes
+                afficherNotification('⏰ Auto-synchronisation activée (toutes les 5 minutes)', 'success');
             }
         }
 
@@ -709,16 +715,11 @@
             const meilleurMois = Object.keys(parMois).length > 0 ? 
                 Object.keys(parMois).reduce((a, b) => parMois[a] > parMois[b] ? a : b) : '-';
             
-            // Dernière mise à jour
-            const derniereMAJ = localStorage.getItem('derniereMAJ');
-            const dateDerniereMAJ = derniereMAJ ? new Date(derniereMAJ).toLocaleDateString('fr-FR') : '-';
-            
             document.getElementById('totalCA').textContent = totalCA.toLocaleString('fr-FR', {style: 'currency', currency: 'EUR'});
             document.getElementById('moyenneCA').textContent = moyenneCA.toLocaleString('fr-FR', {style: 'currency', currency: 'EUR'});
             document.getElementById('nbFamilles').textContent = familles.length;
             document.getElementById('meilleurMois').textContent = meilleurMois;
             document.getElementById('nbEnregistrements').textContent = donneesCA.length.toLocaleString('fr-FR');
-            document.getElementById('derniereMAJ').textContent = dateDerniereMAJ;
         }
 
         function obtenirDonneesFiltrees() {
@@ -1054,6 +1055,20 @@
                 }, 300);
             }, 4000);
         }
+
+        // Configuration automatique avec votre ID
+        window.addEventListener('load', function() {
+            // Pré-remplir avec votre ID Google Sheets
+            const votreSheetsId = '1AvsGWT-cGYCSteE_VTXONdug5lYt3XXz-kLpkOQJlxs';
+            document.getElementById('sheetsId').value = votreSheetsId;
+            sheetsId = votreSheetsId;
+            localStorage.setItem('sheetsId', sheetsId);
+            
+            // Se connecter automatiquement après 2 secondes
+            setTimeout(() => {
+                connecterGoogleSheets();
+            }, 2000);
+        });
     </script>
 </body>
 </html>
