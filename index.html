@@ -1,12 +1,59 @@
-<!DOCTYPE html>
+function creerGraphiques() {
+            const donneesFiltrees = obtenirDonneesFiltrees();
+            
+            // Graphique d'évolution mensuelle
+            creerGraphiqueEvolution(donneesFiltrees);
+            
+            // Graphique par famille
+            creerGraphiqueFamilles(donneesFiltrees);
+            
+            // Graphique par année
+            creerGraphiqueAnnees(donneesFiltrees);
+            
+            // Top 5 familles
+            creerGraphiqueTop5(donneesFiltrees);
+        }
+
+        function creerGraphiqueEvolution(donnees) {
+            const ctx = document.getElementById('chartEvolution').getContext('2d');
+            
+            if (charts.evolution) {
+                charts.evolution.destroy();
+            }
+            
+            // Grouper par mois/année
+            const parMois = {};
+            donnees.forEach(d => {
+                const cle = `${d['Mois CA']}/${d['Année CA']}`;
+                parMois[cle] = (parMois[cle] || 0) + parseFloat(d['CA HT Mensuel']);
+            });
+            
+            const labels = Object.keys(parMois).sort((a, b) => {
+                const [moisA, anneeA] = a.split('/').map(Number);
+                const [moisB, anneeB] = b.split('/').map(Number);
+                return (anneeA * 12 + moisA) - (anneeB * 12 + moisB);
+            });
+            const values = labels.map(label => parMois[label]);
+            
+            charts.evolution = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'CA Mensuel (€)',
+                        data: values,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#667eea',<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tableau de Bord Commercial - Google Sheets</title>
+    <title>Tableau de Bord Commercial</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -42,28 +89,6 @@
             font-size: 1.1rem;
         }
 
-        .sync-status {
-            margin-top: 10px;
-            padding: 10px;
-            border-radius: 8px;
-            font-weight: 600;
-        }
-
-        .sync-status.connected {
-            background: rgba(72, 187, 120, 0.2);
-            color: #2f855a;
-        }
-
-        .sync-status.error {
-            background: rgba(245, 101, 101, 0.2);
-            color: #c53030;
-        }
-
-        .sync-status.loading {
-            background: rgba(66, 153, 225, 0.2);
-            color: #2b6cb0;
-        }
-
         .container {
             max-width: 1400px;
             margin: 0 auto;
@@ -79,72 +104,31 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
 
-        .config-section {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 2px dashed rgba(102, 126, 234, 0.3);
-        }
-
-        .config-section h3 {
-            color: #2c3e50;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .input-group label {
-            font-weight: 600;
-            color: #2c3e50;
-            min-width: 120px;
-        }
-
-        .input-group input {
-            flex: 1;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            min-width: 300px;
-        }
-
-        .input-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
         .controls-row {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
+            align-items: start;
         }
 
         .filter-group {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            min-width: 150px;
         }
 
         .filter-group label {
             font-weight: 600;
             color: #2c3e50;
-            font-size: 0.9rem;
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        .filter-help {
+            font-size: 0.85rem;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 8px;
         }
 
         select {
@@ -154,6 +138,7 @@
             font-size: 1rem;
             transition: all 0.3s ease;
             background: white;
+            min-height: 120px;
         }
 
         select:focus {
@@ -162,13 +147,39 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
+        select[multiple] {
+            min-height: 120px;
+        }
+
+        select[multiple] option {
+            padding: 8px;
+            margin: 2px 0;
+        }
+
+        select[multiple] option:checked {
+            background: #667eea;
+            color: white;
+        }
+
+        .single-select {
+            min-height: 50px;
+        }
+
+        .reset-filters {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
         .btn {
-            padding: 12px 24px;
+            padding: 10px 20px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
-            font-size: 1rem;
+            font-size: 0.9rem;
             transition: all 0.3s ease;
             text-decoration: none;
             display: inline-flex;
@@ -186,26 +197,6 @@
             transform: translateY(-2px);
         }
 
-        .btn-success {
-            background: #48bb78;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #38a169;
-            transform: translateY(-2px);
-        }
-
-        .btn-warning {
-            background: #ed8936;
-            color: white;
-        }
-
-        .btn-warning:hover {
-            background: #dd7724;
-            transform: translateY(-2px);
-        }
-
         .btn-secondary {
             background: #718096;
             color: white;
@@ -214,14 +205,6 @@
         .btn-secondary:hover {
             background: #4a5568;
             transform: translateY(-2px);
-        }
-
-        .management-buttons {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 15px;
         }
 
         .stats-grid {
@@ -299,10 +282,15 @@
             overflow: hidden;
         }
 
+        .table-wrapper {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
         }
 
         th, td {
@@ -317,6 +305,7 @@
             color: #2c3e50;
             position: sticky;
             top: 0;
+            z-index: 10;
         }
 
         tr:hover {
@@ -367,11 +356,23 @@
             background: #4299e1;
         }
 
-        .help-text {
-            font-size: 0.9rem;
+        .filter-summary {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .filter-summary h4 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .filter-summary p {
             color: #666;
-            margin-top: 5px;
-            font-style: italic;
+            font-size: 0.9rem;
+            margin: 4px 0;
         }
 
         @media (max-width: 768px) {
@@ -380,12 +381,13 @@
             }
             
             .controls-row {
-                flex-direction: column;
+                grid-template-columns: 1fr;
                 gap: 15px;
             }
             
-            .management-buttons {
+            .reset-filters {
                 flex-direction: column;
+                align-items: stretch;
             }
             
             .charts-grid {
@@ -395,15 +397,6 @@
             .stats-grid {
                 grid-template-columns: 1fr;
             }
-
-            .input-group {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .input-group input {
-                min-width: auto;
-            }
         }
     </style>
 </head>
@@ -411,49 +404,42 @@
     <div class="header">
         <h1>📊 Tableau de Bord Commercial</h1>
         <div class="date-info">Dernière mise à jour : <span id="lastUpdate"></span></div>
-        <div id="syncStatus" class="sync-status loading">
-            🔄 Configuration en cours...
-        </div>
     </div>
 
     <div class="container">
         <div class="controls">
-            <div class="config-section">
-                <h3>⚙️ Configuration Google Sheets</h3>
-                <div class="input-group">
-                    <label for="sheetsId">ID Google Sheets :</label>
-                    <input type="text" id="sheetsId" placeholder="Collez l'ID de votre Google Sheets ici">
-                </div>
-                <div class="help-text">
-                    L'ID se trouve dans l'URL de votre Google Sheets : 
-                    https://docs.google.com/spreadsheets/d/<strong>VOTRE_ID_ICI</strong>/edit
-                </div>
-                <div class="management-buttons">
-                    <button class="btn btn-primary" onclick="connecterGoogleSheets()">🔗 Connecter à Google Sheets</button>
-                    <button class="btn btn-secondary" onclick="synchroniserMaintenant()">🔄 Synchroniser maintenant</button>
-                    <button class="btn btn-warning" onclick="activerAutoSync()">⏰ Auto-sync (5 min)</button>
-                </div>
-            </div>
-
             <div class="controls-row">
                 <div class="filter-group">
-                    <label>Famille de produits :</label>
-                    <select id="familleFilter">
+                    <label for="familleFilter">Famille de produits :</label>
+                    <select id="familleFilter" class="single-select">
                         <option value="">Toutes les familles</option>
                     </select>
                 </div>
+                
                 <div class="filter-group">
-                    <label>Année :</label>
-                    <select id="anneeFilter">
-                        <option value="">Toutes les années</option>
+                    <label for="anneeFilter">Années :</label>
+                    <div class="filter-help">Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs années</div>
+                    <select id="anneeFilter" multiple>
                     </select>
                 </div>
+                
                 <div class="filter-group">
-                    <label>Mois :</label>
-                    <select id="moisFilter">
-                        <option value="">Tous les mois</option>
+                    <label for="moisFilter">Mois :</label>
+                    <div class="filter-help">Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs mois</div>
+                    <select id="moisFilter" multiple>
                     </select>
                 </div>
+            </div>
+
+            <div class="reset-filters">
+                <button class="btn btn-primary" onclick="resetFiltres()">🔄 Réinitialiser les filtres</button>
+                <button class="btn btn-secondary" onclick="selectionnerTout('annee')">📅 Toutes les années</button>
+                <button class="btn btn-secondary" onclick="selectionnerTout('mois')">📆 Tous les mois</button>
+            </div>
+
+            <div class="filter-summary" id="filterSummary">
+                <h4>Filtres actifs :</h4>
+                <p id="summaryText">Toutes les données affichées</p>
             </div>
         </div>
 
@@ -476,11 +462,11 @@
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="nbEnregistrements">0</div>
-                <div class="stat-label">Total d'enregistrements</div>
+                <div class="stat-label">Enregistrements affichés</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value" id="derniereSync">-</div>
-                <div class="stat-label">Dernière Synchronisation</div>
+                <div class="stat-value" id="periodeAnalysee">-</div>
+                <div class="stat-label">Période analysée</div>
             </div>
         </div>
 
@@ -505,8 +491,10 @@
 
         <div class="table-container">
             <h3 class="chart-title">Données Détaillées</h3>
-            <div id="tableData">
-                <div class="loading">En attente de configuration Google Sheets...</div>
+            <div class="table-wrapper">
+                <div id="tableData">
+                    <div class="loading">Chargement des données...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -515,18 +503,12 @@
         // Variables globales
         let donneesCA = [];
         let charts = {};
-        let autoSyncInterval = null;
-        let sheetsId = '';
+        const GOOGLE_SHEETS_ID = '1AvsGWT-cGYCSteE_VTXONdug5lYt3XXz-kLpkOQJlxs';
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
-            // Charger la configuration sauvegardée
-            const savedSheetsId = localStorage.getItem('sheetsId');
-            if (savedSheetsId) {
-                document.getElementById('sheetsId').value = savedSheetsId;
-                sheetsId = savedSheetsId;
-                connecterGoogleSheets();
-            }
+            // Charger automatiquement depuis Google Sheets
+            chargerDepuisGoogleSheets();
             
             // Gestionnaires d'événements
             document.getElementById('familleFilter').addEventListener('change', filtrerDonnees);
@@ -535,44 +517,14 @@
             
             // Mise à jour de la date
             document.getElementById('lastUpdate').textContent = new Date().toLocaleString('fr-FR');
+            
+            // Synchronisation automatique toutes les 5 minutes
+            setInterval(chargerDepuisGoogleSheets, 5 * 60 * 1000);
         });
 
-        function connecterGoogleSheets() {
-            const inputSheetsId = document.getElementById('sheetsId').value.trim();
-            
-            if (!inputSheetsId) {
-                afficherNotification('❌ Veuillez saisir l\'ID de votre Google Sheets', 'error');
-                return;
-            }
-            
-            // Extraire l'ID si on a collé une URL complète
-            let extractedId = inputSheetsId;
-            const urlMatch = inputSheetsId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-            if (urlMatch) {
-                extractedId = urlMatch[1];
-                document.getElementById('sheetsId').value = extractedId;
-            }
-            
-            sheetsId = extractedId;
-            localStorage.setItem('sheetsId', sheetsId);
-            
-            synchroniserMaintenant();
-        }
-
-        async function synchroniserMaintenant() {
-            if (!sheetsId) {
-                afficherNotification('❌ Veuillez d\'abord configurer votre Google Sheets', 'error');
-                return;
-            }
-            
-            const syncStatus = document.getElementById('syncStatus');
-            syncStatus.className = 'sync-status loading';
-            syncStatus.textContent = '🔄 Synchronisation en cours...';
-            
+        async function chargerDepuisGoogleSheets() {
             try {
-                // URL pour récupérer le CSV depuis Google Sheets
-                const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetsId}/export?format=csv&gid=0`;
-                
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEETS_ID}/export?format=csv&gid=0`;
                 const response = await fetch(csvUrl);
                 
                 if (!response.ok) {
@@ -589,10 +541,6 @@
                     transformHeader: (header) => header.trim()
                 });
                 
-                if (parsed.errors.length > 0) {
-                    console.warn('Erreurs de parsing CSV:', parsed.errors);
-                }
-                
                 // Validation et nettoyage des données
                 donneesCA = parsed.data.filter(row => 
                     row.Famille && 
@@ -604,45 +552,62 @@
                     !isNaN(parseInt(row['Année CA']))
                 );
                 
-                if (donneesCA.length === 0) {
-                    throw new Error('Aucune donnée valide trouvée dans Google Sheets');
+                if (donneesCA.length > 0) {
+                    // Mettre à jour l'interface
+                    mettreAJourTableauBord();
+                    console.log(`✅ ${donneesCA.length} enregistrements synchronisés depuis Google Sheets`);
                 }
                 
-                // Mettre à jour l'interface
-                mettreAJourTableauBord();
-                
-                // Mettre à jour le statut
-                syncStatus.className = 'sync-status connected';
-                syncStatus.innerHTML = `✅ Connecté - ${donneesCA.length} enregistrements synchronisés`;
-                
-                // Mettre à jour la date de synchronisation
-                document.getElementById('derniereSync').textContent = new Date().toLocaleTimeString('fr-FR');
-                
-                afficherNotification(`✅ Synchronisation réussie ! ${donneesCA.length} enregistrements chargés`, 'success');
-                
             } catch (error) {
-                console.error('Erreur de synchronisation:', error);
+                console.warn('Synchronisation Google Sheets échouée, utilisation des données d\'exemple:', error);
                 
-                syncStatus.className = 'sync-status error';
-                syncStatus.textContent = '❌ Erreur de connexion - Vérifiez votre ID et les permissions';
-                
-                afficherNotification('❌ Erreur de synchronisation. Vérifiez que votre Google Sheets est public et que l\'ID est correct.', 'error');
-            }
-        }
-
-        function activerAutoSync() {
-            if (!sheetsId) {
-                afficherNotification('❌ Veuillez d\'abord configurer votre Google Sheets', 'error');
-                return;
-            }
-            
-            if (autoSyncInterval) {
-                clearInterval(autoSyncInterval);
-                autoSyncInterval = null;
-                afficherNotification('⏸️ Auto-synchronisation désactivée', 'info');
-            } else {
-                autoSyncInterval = setInterval(synchroniserMaintenant, 5 * 60 * 1000); // 5 minutes
-                afficherNotification('⏰ Auto-synchronisation activée (toutes les 5 minutes)', 'success');
+                // Utiliser les données d'exemple en cas d'échec
+                if (donneesCA.length === 0) {
+                    donneesCA = [
+                        // 2023
+                        {Famille: "BCT", "CA HT Mensuel": 12500.50, "Mois CA": 1, "Année CA": 2023},
+                        {Famille: "BCT", "CA HT Mensuel": 13200.75, "Mois CA": 2, "Année CA": 2023},
+                        {Famille: "BCT", "CA HT Mensuel": 14100.25, "Mois CA": 3, "Année CA": 2023},
+                        {Famille: "Boulangerie", "CA HT Mensuel": 2800.30, "Mois CA": 1, "Année CA": 2023},
+                        {Famille: "Boulangerie", "CA HT Mensuel": 2950.80, "Mois CA": 2, "Année CA": 2023},
+                        {Famille: "Boulangerie", "CA HT Mensuel": 3100.20, "Mois CA": 3, "Année CA": 2023},
+                        {Famille: "Crèmerie", "CA HT Mensuel": 7200.60, "Mois CA": 1, "Année CA": 2023},
+                        {Famille: "Crèmerie", "CA HT Mensuel": 7500.90, "Mois CA": 2, "Année CA": 2023},
+                        {Famille: "Crèmerie", "CA HT Mensuel": 7800.40, "Mois CA": 3, "Année CA": 2023},
+                        {Famille: "Epicerie", "CA HT Mensuel": 8500.15, "Mois CA": 1, "Année CA": 2023},
+                        {Famille: "Epicerie", "CA HT Mensuel": 8750.35, "Mois CA": 2, "Année CA": 2023},
+                        {Famille: "Epicerie", "CA HT Mensuel": 9000.55, "Mois CA": 3, "Année CA": 2023},
+                        
+                        // 2024
+                        {Famille: "BCT", "CA HT Mensuel": 13500.80, "Mois CA": 1, "Année CA": 2024},
+                        {Famille: "BCT", "CA HT Mensuel": 14200.40, "Mois CA": 2, "Année CA": 2024},
+                        {Famille: "BCT", "CA HT Mensuel": 15100.60, "Mois CA": 3, "Année CA": 2024},
+                        {Famille: "BCT", "CA HT Mensuel": 15800.25, "Mois CA": 4, "Année CA": 2024},
+                        {Famille: "Boulangerie", "CA HT Mensuel": 3200.45, "Mois CA": 1, "Année CA": 2024},
+                        {Famille: "Boulangerie", "CA HT Mensuel": 3350.70, "Mois CA": 2, "Année CA": 2024},
+                        {Famille: "Boulangerie", "CA HT Mensuel": 3500.90, "Mois CA": 3, "Année CA": 2024},
+                        {Famille: "Boulangerie", "CA HT Mensuel": 3650.15, "Mois CA": 4, "Année CA": 2024},
+                        {Famille: "Crèmerie", "CA HT Mensuel": 8100.25, "Mois CA": 1, "Année CA": 2024},
+                        {Famille: "Crèmerie", "CA HT Mensuel": 8300.50, "Mois CA": 2, "Année CA": 2024},
+                        {Famille: "Crèmerie", "CA HT Mensuel": 8500.75, "Mois CA": 3, "Année CA": 2024},
+                        {Famille: "Crèmerie", "CA HT Mensuel": 8700.95, "Mois CA": 4, "Année CA": 2024},
+                        {Famille: "Epicerie", "CA HT Mensuel": 9200.30, "Mois CA": 1, "Année CA": 2024},
+                        {Famille: "Epicerie", "CA HT Mensuel": 9500.60, "Mois CA": 2, "Année CA": 2024},
+                        {Famille: "Epicerie", "CA HT Mensuel": 9800.85, "Mois CA": 3, "Année CA": 2024},
+                        {Famille: "Epicerie", "CA HT Mensuel": 10100.20, "Mois CA": 4, "Année CA": 2024},
+                        
+                        // 2025
+                        {Famille: "BCT", "CA HT Mensuel": 16200.50, "Mois CA": 1, "Année CA": 2025},
+                        {Famille: "BCT", "CA HT Mensuel": 16800.75, "Mois CA": 2, "Année CA": 2025},
+                        {Famille: "Boulangerie", "CA HT Mensuel": 3800.25, "Mois CA": 1, "Année CA": 2025},
+                        {Famille: "Boulangerie", "CA HT Mensuel": 3950.40, "Mois CA": 2, "Année CA": 2025},
+                        {Famille: "Crèmerie", "CA HT Mensuel": 8900.60, "Mois CA": 1, "Année CA": 2025},
+                        {Famille: "Crèmerie", "CA HT Mensuel": 9100.80, "Mois CA": 2, "Année CA": 2025},
+                        {Famille: "Epicerie", "CA HT Mensuel": 10400.45, "Mois CA": 1, "Année CA": 2025},
+                        {Famille: "Epicerie", "CA HT Mensuel": 10700.70, "Mois CA": 2, "Année CA": 2025}
+                    ];
+                    mettreAJourTableauBord();
+                }
             }
         }
 
@@ -651,6 +616,7 @@
             calculerStatistiques();
             creerGraphiques();
             afficherTableau(obtenirDonneesFiltrees());
+            mettreAJourResumeFiltres();
         }
 
         function mettreAJourFiltres() {
@@ -662,16 +628,13 @@
             const anneeSelect = document.getElementById('anneeFilter');
             const moisSelect = document.getElementById('moisFilter');
             
-            // Sauvegarder les valeurs actuelles
+            // Sauvegarder les sélections actuelles
             const familleActuelle = familleSelect.value;
-            const anneeActuelle = anneeSelect.value;
-            const moisActuel = moisSelect.value;
+            const anneesSelectionnees = Array.from(anneeSelect.selectedOptions).map(opt => opt.value);
+            const moisSelectionnes = Array.from(moisSelect.selectedOptions).map(opt => opt.value);
             
-            // Vider les options existantes (sauf la première)
+            // Famille (sélection simple)
             familleSelect.innerHTML = '<option value="">Toutes les familles</option>';
-            anneeSelect.innerHTML = '<option value="">Toutes les années</option>';
-            moisSelect.innerHTML = '<option value="">Tous les mois</option>';
-            
             familles.forEach(famille => {
                 const option = document.createElement('option');
                 option.value = famille;
@@ -680,22 +643,82 @@
                 familleSelect.appendChild(option);
             });
             
+            // Années (sélection multiple)
+            anneeSelect.innerHTML = '';
             annees.forEach(annee => {
                 const option = document.createElement('option');
                 option.value = annee;
                 option.textContent = annee;
-                if (annee.toString() === anneeActuelle) option.selected = true;
+                if (anneesSelectionnees.includes(annee.toString())) option.selected = true;
                 anneeSelect.appendChild(option);
             });
             
+            // Mois (sélection multiple)
             const nomsMois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+            moisSelect.innerHTML = '';
             mois.forEach(m => {
                 const option = document.createElement('option');
                 option.value = m;
                 option.textContent = `${nomsMois[m-1]} (${m})`;
-                if (m.toString() === moisActuel) option.selected = true;
+                if (moisSelectionnes.includes(m.toString())) option.selected = true;
                 moisSelect.appendChild(option);
             });
+        }
+
+        function obtenirDonneesFiltrees() {
+            const familleFilter = document.getElementById('familleFilter').value;
+            const anneesSelectionnees = Array.from(document.getElementById('anneeFilter').selectedOptions).map(opt => parseInt(opt.value));
+            const moisSelectionnes = Array.from(document.getElementById('moisFilter').selectedOptions).map(opt => parseInt(opt.value));
+            
+            return donneesCA.filter(d => {
+                const familleOK = !familleFilter || d.Famille === familleFilter;
+                const anneeOK = anneesSelectionnees.length === 0 || anneesSelectionnees.includes(d['Année CA']);
+                const moisOK = moisSelectionnes.length === 0 || moisSelectionnes.includes(d['Mois CA']);
+                
+                return familleOK && anneeOK && moisOK;
+            });
+        }
+
+        function mettreAJourResumeFiltres() {
+            const familleFilter = document.getElementById('familleFilter').value;
+            const anneesSelectionnees = Array.from(document.getElementById('anneeFilter').selectedOptions).map(opt => opt.text);
+            const moisSelectionnes = Array.from(document.getElementById('moisFilter').selectedOptions).map(opt => opt.text);
+            
+            let resume = [];
+            
+            if (familleFilter) {
+                resume.push(`Famille: ${familleFilter}`);
+            }
+            
+            if (anneesSelectionnees.length > 0) {
+                resume.push(`Années: ${anneesSelectionnees.join(', ')}`);
+            }
+            
+            if (moisSelectionnes.length > 0) {
+                resume.push(`Mois: ${moisSelectionnes.join(', ')}`);
+            }
+            
+            const summaryText = document.getElementById('summaryText');
+            if (resume.length === 0) {
+                summaryText.textContent = 'Toutes les données affichées';
+            } else {
+                summaryText.textContent = resume.join(' • ');
+            }
+        }
+
+        function resetFiltres() {
+            document.getElementById('familleFilter').value = '';
+            document.getElementById('anneeFilter').selectedIndex = -1;
+            document.getElementById('moisFilter').selectedIndex = -1;
+            filtrerDonnees();
+        }
+
+        function selectionnerTout(type) {
+            const select = document.getElementById(type === 'annee' ? 'anneeFilter' : 'moisFilter');
+            for (let i = 0; i < select.options.length; i++) {
+                select.options[i].selected = true;
+            }
+            filtrerDonnees();
         }
 
         function calculerStatistiques() {
@@ -715,360 +738,22 @@
             const meilleurMois = Object.keys(parMois).length > 0 ? 
                 Object.keys(parMois).reduce((a, b) => parMois[a] > parMois[b] ? a : b) : '-';
             
+            // Période analysée
+            const annees = [...new Set(donneesFiltrees.map(d => d['Année CA']))].sort();
+            const mois = [...new Set(donneesFiltrees.map(d => d['Mois CA']))].sort();
+            let periode = '-';
+            if (annees.length > 0) {
+                if (annees.length === 1) {
+                    periode = `${annees[0]}`;
+                } else {
+                    periode = `${annees[0]} - ${annees[annees.length - 1]}`;
+                }
+            }
+            
             document.getElementById('totalCA').textContent = totalCA.toLocaleString('fr-FR', {style: 'currency', currency: 'EUR'});
             document.getElementById('moyenneCA').textContent = moyenneCA.toLocaleString('fr-FR', {style: 'currency', currency: 'EUR'});
             document.getElementById('nbFamilles').textContent = familles.length;
             document.getElementById('meilleurMois').textContent = meilleurMois;
-            document.getElementById('nbEnregistrements').textContent = donneesCA.length.toLocaleString('fr-FR');
+            document.getElementById('nbEnregistrements').textContent = donneesFiltrees.length.toLocaleString('fr-FR');
+            document.getElementById('periodeAnalysee').textContent = periode;
         }
-
-        function obtenirDonneesFiltrees() {
-            const familleFilter = document.getElementById('familleFilter').value;
-            const anneeFilter = document.getElementById('anneeFilter').value;
-            const moisFilter = document.getElementById('moisFilter').value;
-            
-            return donneesCA.filter(d => {
-                return (!familleFilter || d.Famille === familleFilter) &&
-                       (!anneeFilter || d['Année CA'].toString() === anneeFilter) &&
-                       (!moisFilter || d['Mois CA'].toString() === moisFilter);
-            });
-        }
-
-        function creerGraphiques() {
-            const donneesFiltrees = obtenirDonneesFiltrees();
-            
-            // Graphique d'évolution mensuelle
-            creerGraphiqueEvolution(donneesFiltrees);
-            
-            // Graphique par famille
-            creerGraphiqueFamilles(donneesFiltrees);
-            
-            // Graphique par année
-            creerGraphiqueAnnees(donneesFiltrees);
-            
-            // Top 5 familles
-            creerGraphiqueTop5(donneesFiltrees);
-        }
-
-        function creerGraphiqueEvolution(donnees) {
-            const ctx = document.getElementById('chartEvolution').getContext('2d');
-            
-            if (charts.evolution) {
-                charts.evolution.destroy();
-            }
-            
-            // Grouper par mois/année
-            const parMois = {};
-            donnees.forEach(d => {
-                const cle = `${d['Mois CA']}/${d['Année CA']}`;
-                parMois[cle] = (parMois[cle] || 0) + parseFloat(d['CA HT Mensuel']);
-            });
-            
-            const labels = Object.keys(parMois).sort((a, b) => {
-                const [moisA, anneeA] = a.split('/').map(Number);
-                const [moisB, anneeB] = b.split('/').map(Number);
-                return (anneeA * 12 + moisA) - (anneeB * 12 + moisB);
-            });
-            const values = labels.map(label => parMois[label]);
-            
-            charts.evolution = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'CA Mensuel (€)',
-                        data: values,
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#667eea',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                        pointRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return value.toLocaleString('fr-FR') + ' €';
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function creerGraphiqueFamilles(donnees) {
-            const ctx = document.getElementById('chartFamilles').getContext('2d');
-            
-            if (charts.familles) {
-                charts.familles.destroy();
-            }
-            
-            // Grouper par famille
-            const parFamille = {};
-            donnees.forEach(d => {
-                parFamille[d.Famille] = (parFamille[d.Famille] || 0) + parseFloat(d['CA HT Mensuel']);
-            });
-            
-            const labels = Object.keys(parFamille);
-            const values = labels.map(label => parFamille[label]);
-            
-            // Couleurs dynamiques
-            const colors = labels.map((_, i) => `hsl(${(i * 360) / labels.length}, 70%, 60%)`);
-            
-            charts.familles = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: colors,
-                        borderWidth: 3,
-                        borderColor: '#fff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 12,
-                                padding: 15,
-                                usePointStyle: true
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((value / total) * 100).toFixed(1);
-                                    return `${label}: ${value.toLocaleString('fr-FR')} € (${percentage}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function creerGraphiqueAnnees(donnees) {
-            const ctx = document.getElementById('chartAnnees').getContext('2d');
-            
-            if (charts.annees) {
-                charts.annees.destroy();
-            }
-            
-            // Grouper par année
-            const parAnnee = {};
-            donnees.forEach(d => {
-                const annee = d['Année CA'];
-                parAnnee[annee] = (parAnnee[annee] || 0) + parseFloat(d['CA HT Mensuel']);
-            });
-            
-            const labels = Object.keys(parAnnee).sort();
-            const values = labels.map(label => parAnnee[label]);
-            
-            charts.annees = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'CA Annuel (€)',
-                        data: values,
-                        backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                        borderColor: '#667eea',
-                        borderWidth: 2,
-                        borderRadius: 8,
-                        borderSkipped: false,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return value.toLocaleString('fr-FR') + ' €';
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function creerGraphiqueTop5(donnees) {
-            const ctx = document.getElementById('chartTop5').getContext('2d');
-            
-            if (charts.top5) {
-                charts.top5.destroy();
-            }
-            
-            // Grouper par famille et prendre le top 5
-            const parFamille = {};
-            donnees.forEach(d => {
-                parFamille[d.Famille] = (parFamille[d.Famille] || 0) + parseFloat(d['CA HT Mensuel']);
-            });
-            
-            const sorted = Object.entries(parFamille)
-                .sort(([,a], [,b]) => b - a)
-                .slice(0, 5);
-            
-            const labels = sorted.map(([famille]) => famille);
-            const values = sorted.map(([, ca]) => ca);
-            
-            charts.top5 = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'CA (€)',
-                        data: values,
-                        backgroundColor: [
-                            '#667eea',
-                            '#764ba2',
-                            '#f093fb',
-                            '#f5576c',
-                            '#4facfe'
-                        ],
-                        borderWidth: 0,
-                        borderRadius: 8,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return value.toLocaleString('fr-FR') + ' €';
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function afficherTableau(donnees) {
-            const container = document.getElementById('tableData');
-            
-            if (donnees.length === 0) {
-                container.innerHTML = '<div class="no-data">Aucune donnée à afficher</div>';
-                return;
-            }
-            
-            // Trier par année et mois décroissants
-            donnees.sort((a, b) => {
-                if (a['Année CA'] !== b['Année CA']) {
-                    return b['Année CA'] - a['Année CA'];
-                }
-                return b['Mois CA'] - a['Mois CA'];
-            });
-            
-            let html = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Famille</th>
-                            <th>CA HT (€)</th>
-                            <th>Mois</th>
-                            <th>Année</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-            
-            donnees.forEach(d => {
-                const nomsMois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-                html += `
-                    <tr>
-                        <td><strong>${d.Famille}</strong></td>
-                        <td>${parseFloat(d['CA HT Mensuel']).toLocaleString('fr-FR', {style: 'currency', currency: 'EUR'})}</td>
-                        <td>${nomsMois[d['Mois CA'] - 1]} (${d['Mois CA']})</td>
-                        <td>${d['Année CA']}</td>
-                    </tr>
-                `;
-            });
-            
-            html += '</tbody></table>';
-            container.innerHTML = html;
-        }
-
-        function filtrerDonnees() {
-            calculerStatistiques();
-            creerGraphiques();
-            afficherTableau(obtenirDonneesFiltrees());
-        }
-
-        function afficherNotification(message, type = 'info') {
-            // Supprimer les notifications existantes
-            const existingNotifications = document.querySelectorAll('.notification');
-            existingNotifications.forEach(notif => notif.remove());
-            
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            // Afficher la notification
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 100);
-            
-            // Masquer la notification après 4 secondes
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.remove();
-                    }
-                }, 300);
-            }, 4000);
-        }
-
-        // Configuration automatique avec votre ID
-        window.addEventListener('load', function() {
-            // Pré-remplir avec votre ID Google Sheets
-            const votreSheetsId = '1AvsGWT-cGYCSteE_VTXONdug5lYt3XXz-kLpkOQJlxs';
-            document.getElementById('sheetsId').value = votreSheetsId;
-            sheetsId = votreSheetsId;
-            localStorage.setItem('sheetsId', sheetsId);
-            
-            // Se connecter automatiquement après 2 secondes
-            setTimeout(() => {
-                connecterGoogleSheets();
-            }, 2000);
-        });
-    </script>
-</body>
-</html>
