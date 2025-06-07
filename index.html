@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau de Bord Commercial - Évolutif</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .date-info {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 150px;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+
+        select, input {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: #ed8936;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #dd7724;
+            transform: translateY(-2px);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .data-management {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+        }
+
+        .data-management h3 {
+            color: white;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .management-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border-left: 5px solid #667eea;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .chart-container:hover {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .chart-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .table-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: #48bb78;
+        }
+
+        .notification.error {
+            background: #f56565;
+        }
+
+        .notification.info {
+            background: #4299e1;
+        }
+
+        .import-zone {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            margin: 15px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .import-zone:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #5a67d8;
+        }
+
+        .import-zone.dragover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: #48bb78;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .controls-row {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .management-buttons {
+                flex-direction: column;
+            }
+            
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Tableau de Bord Commercial</h1>
+        <div class="date-info">Dernière mise à jour : <span id="lastUpdate"></span></div>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="controls-row">
+                <div class="filter-group">
+                    <label>Famille de produits :</label>
+                    <select id="familleFilter">
+                        <option value="">Toutes les familles</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Année :</label>
+                    <select id="anneeFilter">
+                        <option value="">Toutes les années</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Mois :</label>
+                    <select id="moisFilter">
+                        <option value="">Tous les mois</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="data-management">
+                <h3>🗂️ Gestion des Données</h3>
+                <div class="management-buttons">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple>
+                        <button class="btn btn-primary">📁 Importer nouvelles données</button>
+                    </div>
+                    <button class="btn btn-success" onclick="exporterDonnees()">💾 Exporter base complète</button>
+                    <button class="btn btn-warning" onclick="viderDonnees()">🗑️ Vider la base</button>
+                </div>
+                
+                <div class="import-zone" id="importZone">
+                    <p>📂 Glissez-déposez vos fichiers Excel ici</p>
+                    <small>ou cliquez sur "Importer nouvelles données"</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalCA">0 €</div>
+                <div class="stat-label">Chiffre d'Affaires Total</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="moyenneCA">0 €</div>
+                <div class="stat-label">CA Moyen Mensuel</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="nbFamilles">0</div>
+                <div class="stat-label">Familles de Produits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="meilleurMois">-</div>
+                <div class="stat-label">Meilleur Mois</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="nbEnregistrements">0</div>
+                <div class="stat-label">Total d'enregistrements</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="derniereMAJ">-</div>
+                <div class="stat-label">Dernière MAJ</div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3 class="chart-title">Évolution du CA par Mois</h3>
+                <canvas id="chartEvolution"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">Répartition par Famille</h3>
+                <canvas id="chartFamilles"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">Comparaison Annuelle</h3>
+                <canvas id="chartAnnees"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">Top 5 Familles</h3>
+                <canvas id="chartTop5"></canvas>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <h3 class="chart-title">Données Détaillées</h3>
+            <div id="tableData">
+                <div class="loading">Chargement des données...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let donneesCA = [];
+        let charts = {};
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Charger les données depuis le localStorage
+            chargerDonneesLocales();
+            
+            // Gestionnaires d'événements
+            document.getElementById('familleFilter').addEventListener('change', filtrerDonnees);
+            document.getElementById('anneeFilter').addEventListener('change', filtrerDonnees);
+            document.getElementById('moisFilter').addEventListener('change', filtrerDonnees);
+            document.getElementById('fileInput').addEventListener('change', chargerFichiers);
+            
+            // Drag & Drop
+            const importZone = document.getElementById('importZone');
+            importZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                importZone.classList.add('dragover');
+            });
+            
+            importZone.addEventListener('dragleave', () => {
+                importZone.classList.remove('dragover');
+            });
+            
+            importZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                importZone.classList.remove('dragover');
+                traiterFichiers(e.dataTransfer.files);
+            });
+            
+            importZone.addEventListener('click', () => {
+                document.getElementById('fileInput').click();
+            });
+            
+            // Mise à jour de la date
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleString('fr-FR');
+        });
+
+        function chargerDonneesLocales() {
+            const donneesStockees = localStorage.getItem('donneesCA');
+            if (donneesStockees) {
+                try {
+                    donneesCA = JSON.parse(donneesStockees);
+                    afficherNotification('Données chargées depuis la sauvegarde locale', 'info');
+                } catch (e) {
+                    console.error('Erreur lors du chargement des données:', e);
+                    donneesCA = [];
+                }
+            } else {
+                // Données d'exemple si aucune donnée n'est stockée
+                donneesCA = [
+                    {Famille: "BCT", "CA HT Mensuel": 515.62, "Mois CA": 10, "Année CA": 2024},
+                    {Famille: "BCT", "CA HT Mensuel": 483.53, "Mois CA": 9, "Année CA": 2024},
+                    {Famille: "Boulangerie", "CA HT Mensuel": 2850.75, "Mois CA": 10, "Année CA": 2024},
+                    {Famille: "Crèmerie", "CA HT Mensuel": 7200.30, "Mois CA": 10, "Année CA": 2024},
+                    {Famille: "Epicerie", "CA HT Mensuel": 8500.45, "Mois CA": 10, "Année CA": 2024}
+                ];
+                sauvegarderDonnees();
+            }
+            
+            mettreAJourTableauBord();
+        }
+
+        function sauvegarderDonnees() {
+            try {
+                localStorage.setItem('donneesCA', JSON.stringify(donneesCA));
+                localStorage.setItem('derniereMAJ', new Date().toISOString());
+            } catch (e) {
+                console.error('Erreur lors de la sauvegarde:', e);
+                afficherNotification('Erreur lors de la sauvegarde des données', 'error');
+            }
+        }
+
+        function chargerFichiers(event) {
+            traiterFichiers(event.target.files);
+        }
+
+        async function traiterFichiers(files) {
+            for (let file of files) {
+                try {
+                    await traiterFichier(file);
+                } catch (error) {
+                    console.error('Erreur lors du traitement du fichier:', file.name, error);
+                    afficherNotification(`Erreur avec le fichier ${file.name}`, 'error');
+                }
+            }
+        }
+
+        function traiterFichier(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        let nouvellesdonnees = [];
+                        
+                        if (file.name.endsWith('.csv')) {
+                            // Traitement CSV
+                            const csv = e.target.result;
+                            const parsed = Papa.parse(csv, {
+                                header: true,
+                                dynamicTyping: true,
+                                skipEmptyLines: true
+                            });
+                            nouvellesdonnees = parsed.data;
+                        } else {
+                            // Traitement Excel
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, {type: 'array'});
+                            const sheetName = workbook.SheetNames[0];
+                            const worksheet = workbook.Sheets[sheetName];
+                            nouvellesdonnees = XLSX.utils.sheet_to_json(worksheet);
+                        }
+                        
+                        // Validation et nettoyage des données
+                        nouvellesdonnees = nouvellesdonnees.filter(row => 
+                            row.Famille && 
+                            row['CA HT Mensuel'] && 
+                            row['Mois CA'] && 
+                            row['Année CA']
+                        );
+                        
+                        if (nouvellesdonnees.length > 0) {
+                            // Fusionner avec les données existantes
+                            donneesCA = [...donneesCA, ...nouvellesdonnees];
+                            sauvegarderDonnees();
+                            mettreAJourTableauBord();
+                            
+                            afficherNotification(
+                                `✅ ${nouvellesdonnees.length} nouveaux enregistrements ajoutés depuis ${file.name}`, 
+                                'success'
+                            );
+                        } else {
+                            afficherNotification(`Aucune donnée valide trouvée dans ${file.name}`, 'error');
+                        }
+                        
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                
+                reader.onerror = () => reject(reader.error);
+                
+                if (file.name.endsWith('.csv')) {
+                    reader.readAsText(file);
+                } else {
+                    reader.readAsArrayBuffer(file);
+                }
+            });
+        }
+
+        function exporterDonnees() {
+            if (donneesCA.length === 0) {
+                afficherNotification('Aucune donnée à exporter', 'error');
+                return;
+            }
+            
+            // Créer un nouveau workbook
+            const ws = XLSX.utils.json_to_sheet(donneesCA);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "BD");
+            
+            // Télécharger le fichier
+            const date = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `base_donnees_complete_${date}.xlsx`);
+            
+            afficherNotification('📁 Base de données exportée avec succès', 'success');
+        }
+
+        function viderDonnees() {
+            if (confirm('⚠️ Êtes-vous sûr de vouloir vider toute la base de données ? Cette action est irréversible.')) {
+                donneesCA = [];
+                sauvegarderDonnees();
+                mettreAJourTableauBord();
+                afficherNotification('🗑️ Base de données vidée', 'info');
+            }
+        }
+
+        function mettreAJourTableauBord() {
+            mettreAJourFiltres();
+            calculerStatistiques();
+            creerGraphiques();
+            afficherTableau(obtenirDonneesFiltrees());
+        }
+
+        function mettreAJourFiltres() {
+            const familles = [...new Set(donneesCA.map(d => d.Famille))].sort();
+            const annees = [...new Set(donneesCA.map(d => d['Année CA']))].sort();
+            const mois = [...new Set(donneesCA.map(d => d['Mois CA']))].sort((a, b) => a - b);
+            
+            const familleSelect = document.getElementById('familleFilter');
+            const anneeSelect = document.getElementById('anneeFilter');
+            const moisSelect = document.getElementById('moisFilter');
+            
+            // Sauvegarder les valeurs actuelles
+            const familleActuelle = familleSelect.value;
+            const anneeActuelle = anneeSelect.value;
+            const moisActuel = moisSelect.value;
+            
+            // Vider les options existantes (sauf la première)
+            familleSelect.innerHTML = '<option value="">Toutes les familles</option>';
+            anneeSelect.innerHTML = '<option value="">Toutes les années</option>';
+            moisSelect.innerHTML = '<option value="">Tous les mois</option>';
+            
+            familles.forEach(famille => {
+                const option = document.createElement('option');
+                option.value = famille;
+                option.textContent = famille;
+                if (famille === familleActuelle) option.selected = true;
+                familleSelect.appendChild(option);
+            });
+            
+            annees.forEach(annee => {
+                const option = document.createElement('option');
+                option.value = annee;
+                option.textContent = annee;
+                if (annee.toString() === anneeActuelle) option.selected = true;
+                anneeSelect.appendChild(option);
+            });
+            
+            const nomsMois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+            mois.forEach(m => {
+                const option = document.createElement('option');
+                option.value = m;
+                option.textContent = `${nomsMois[m-1]} (${m})`;
+                if (m.toString() === moisActuel) option.selected = true;
+                moisSelect.appendChild(option);
+            });
+        }
+
+        function calculerStatistiques() {
+            const donneesFiltrees = obtenirDonneesFiltrees();
+            
+            const totalCA = donneesFiltrees.reduce((sum, d) => sum + parseFloat(d['CA HT Mensuel']), 0);
+            const moyenneCA = donneesFiltrees.length > 0 ? totalCA / donneesFiltrees.length : 0;
+            const familles = [...new Set(donneesFiltrees.map(d => d.Famille))];
+            
+            // Trouver le meilleur mois
+            const parMois = {};
+            donneesFiltrees.forEach(d => {
+                const cle = `${d['Mois CA']}/${d['Année CA']}`;
+                parMois[cle] = (parMois[cle] || 0) + parseFloat(d['CA HT Mensuel']);
+            });
+            
+            const meilleurMois = Object.keys(parMois).length > 0 ? 
+                Object.keys(parMois).reduce((a, b) => parMois[a] > parMois[b] ? a : b) : '-';
+            
+            // Dernière mise à jour
+            const derniereMAJ = localStorage.getItem('derniereMAJ');
+            const dateDerniereMAJ = derniereMAJ ? new Date(derniereMAJ).toLocaleDateString('fr-FR') : '-';
+            
+            document.getElementById('totalCA').textContent = totalCA.toLocaleString('fr-FR', {style: 'currency', currency: 'EUR'});
+            document.getElementById('moyenneCA').textContent = moyenneCA.toLocaleString('fr-FR', {style: 'currency', currency: 'EUR'});
+            document.getElementById('nbFamilles').textContent = familles.length;
+            document.getElementById('meilleurMois').textContent = meilleurMois;
+            document.getElementById('nbEnregistrements').textContent = donneesCA.length.toLocaleString('fr-FR');
+            document.getElementById('derniereMAJ').textContent = dateDerniereMAJ;
+        }
+
+        function obtenirDonneesFiltrees() {
+            const familleFilter = document.getElementById('familleFilter').value;
+            const anneeFilter = document.getElementById('anneeFilter').value;
+            const moisFilter = document.getElementById('moisFilter').value;
+            
+            return donneesCA.filter(d => {
+                return (!familleFilter || d.Famille === familleFilter) &&
+                       (!anneeFilter || d['Année CA'].toString() === anneeFilter) &&
+                       (!moisFilter || d['Mois CA'].toString() === moisFilter);
+            });
+        }
+
+        function creerGraphiques() {
+            const donneesFiltrees = obtenirDonneesFiltrees();
+            
+            // Graphique d'évolution mensuelle
+            creerGraphiqueEvolution(donneesFiltrees);
+            
+            // Graphique par famille
+            creerGraphiqueFamilles(donneesFiltrees);
+            
+            // Graphique par année
+            creerGraphiqueAnnees(donneesFiltrees);
+            
+            // Top 5 familles
+            creerGraphiqueTop5(donneesFiltrees);
+        }
+
+        function creerGraphiqueEvolution(donnees) {
+            const ctx = document.getElementById('chartEvolution').getContext('2d');
+            
+            if (charts.evolution) {
+                charts.evolution.destroy();
+            }
+            
+            // Grouper par mois/année
+            const parMois = {};
+            donnees.forEach(d => {
+                const cle = `${d['Mois CA']}/${d['Année CA']}`;
+                parMois[cle] = (parMois[cle] || 0) + parseFloat(d['CA HT Mensuel']);
+            });
+            
+            const labels = Object.keys(parMois).sort((a, b) => {
+                const [moisA, anneeA] = a.split('/').map(Number);
+                const [moisB, anneeB] = b.split('/').map(Number);
+                return (anneeA * 12 + moisA) - (anneeB * 12 + moisB);
+            });
+            const values = labels.map(label => parMois[label]);
+            
+            charts.evolution = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'CA Mensuel (€)',
+                        data: values,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('fr-FR') + ' €';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function creerGraphiqueFamilles(donnees) {
+            const ctx = document.getElementById('chartFamilles').getContext('2d');
+            
+            if (charts.familles) {
+                charts.familles.destroy();
+            }
+            
+            // Grouper par famille
+            const parFamille = {};
+            donnees.forEach(d => {
+                parFamille[d.Famille] = (parFamille[d.Famille] || 0) + parseFloat(d['CA HT Mensuel']);
+            });
+            
+            const labels = Object.keys(parFamille);
+            const values = labels.map(label => parFamille[label]);
+            
+            // Couleurs dynamiques
+            const colors = labels.map((_, i) => `hsl(${(i * 360) / labels.length}, 70%, 60%)`);
+            
+            charts.familles = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderWidth: 3,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 15,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value.toLocaleString('fr-FR')} € (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function creerGraphiqueAnnees(donnees) {
+            const ctx = document.getElementById('chartAnnees').getContext('2d');
+            
+            if (charts.annees) {
+                charts.annees.destroy();
+            }
+            
+            // Grouper par année
+            const parAnnee = {};
+            donnees.forEach(d => {
+                const annee = d['Année CA'];
+                parAnnee[annee] = (parAnnee[annee] || 0) + parseFloat(d['CA HT Mensuel']);
+            });
+            
+            const labels = Object.keys(parAnnee).sort();
+            const values = labels.map(label => parAnnee[label]);
+            
+            charts.annees = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'CA Annuel (€)',
+                        data: values,
+                        backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                        borderColor: '#667eea',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('fr-FR') + ' €';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function creerGraphiqueTop5(donnees) {
+            const ctx = document.getElementById('chartTop5').getContext('2d');
+            
+            if (charts.top5) {
+                charts.top5.destroy();
+            }
+            
+            // Grouper par famille et prendre le top 5
+            const parFamille = {};
+            donnees.forEach(d => {
+                parFamille[d.Famille] = (parFamille[d.Famille] || 0) + parseFloat(d['CA HT Mensuel']);
+            });
+            
+            const sorted = Object.entries(parFamille)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 5);
+            
+            const labels = sorted.map(([famille]) => famille);
+            const values = sorted.map(([, ca]) => ca);
+            
+            charts.top5 = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'CA (€)',
+                        data: values,
+                        backgroundColor: [
+                            '#667eea',
+                            '#764ba2',
+                            '#f093fb',
+                            '#f5576c',
+                            '#4facfe'
+                        ],
+                        borderWidth: 0,
+                        borderRadius: 8,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('fr-FR') + ' €';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function afficherTableau(donnees) {
+            const container = document.getElementById('tableData');
+            
+            if (donnees.length === 0) {
+                container.innerHTML = '<div class="no-data">Aucune donnée à afficher</div>';
+                return;
+            }
+            
+            // Trier par année et mois décroissants
+            donnees.sort((a, b) => {
+                if (a['Année CA'] !== b['Année CA']) {
+                    return b['Année CA'] - a['Année CA'];
+                }
+                return b['Mois CA'] - a['Mois CA'];
+            });
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Famille</th>
+                            <th>CA HT (€)</th>
+                            <th>Mois</th>
+                            <th>Année</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            donnees.forEach(d => {
+                const nomsMois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+                html += `
+                    <tr>
+                        <td><strong>${d.Famille}</strong></td>
+                        <td>${parseFloat(d['CA HT Mensuel']).toLocaleString('fr-FR', {style: 'currency', currency: 'EUR'})}</td>
+                        <td>${nomsMois[d['Mois CA'] - 1]} (${d['Mois CA']})</td>
+                        <td>${d['Année CA']}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function filtrerDonnees() {
+            calculerStatistiques();
+            creerGraphiques();
+            afficherTableau(obtenirDonneesFiltrees());
+        }
+
+        function afficherNotification(message, type = 'info') {
+            // Supprimer les notifications existantes
+            const existingNotifications = document.querySelectorAll('.notification');
+            existingNotifications.forEach(notif => notif.remove());
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Afficher la notification
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            // Masquer la notification après 4 secondes
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, 4000);
+        }
+    </script>
+</body>
+</html>
